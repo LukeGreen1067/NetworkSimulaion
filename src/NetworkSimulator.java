@@ -3,8 +3,7 @@ import java.text.NumberFormat;
 import java.util.Arrays;
 import java.util.PriorityQueue;
 import java.util.Random;
-import java.util.*;
-
+import java.util.Iterator;
 /**
  * Simulate a network with variable reliability.
  *
@@ -159,7 +158,7 @@ public class NetworkSimulator {
             System.out.format("        (%.2f) NetworkSimulator: STOP TIMER.\n", simulationTime);
         }
 
-        Iterator<Event> i = eventQueue.iterator();
+       Iterator<Event> i = eventQueue.iterator();
         while(i.hasNext()) {
             Event e = i.next();
             if (e.getEvType() == EventType.TIMER_INTERRUPT && e.getEvEntity().equals(t)) {
