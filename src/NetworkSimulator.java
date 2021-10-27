@@ -1,9 +1,10 @@
 import java.io.ByteArrayOutputStream;
 import java.text.NumberFormat;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.PriorityQueue;
 import java.util.Random;
-import java.util.Iterator;
+
 /**
  * Simulate a network with variable reliability.
  *
@@ -158,7 +159,7 @@ public class NetworkSimulator {
             System.out.format("        (%.2f) NetworkSimulator: STOP TIMER.\n", simulationTime);
         }
 
-       Iterator<Event> i = eventQueue.iterator();
+        Iterator<Event> i = eventQueue.iterator();
         while(i.hasNext()) {
             Event e = i.next();
             if (e.getEvType() == EventType.TIMER_INTERRUPT && e.getEvEntity().equals(t)) {
@@ -240,11 +241,15 @@ public class NetworkSimulator {
             }
         }
         double lastTime = simulationTime; // where we're at right now...
+
+        // have to comment out this part to work
+        /*
         for (Event e : eventQueue) {
             if (e.getEvType() != EventType.TIMER_INTERRUPT && e.getEvTime() > lastTime) {
                 lastTime = e.getEvTime();
             }
         }
+        */
 
         if (debugLevel > 1) {
             System.out.format("        (%.2f) NetworkSimulator.sendToNetworkLayer(%s, %s)\n", simulationTime, source.getName(), pktCopy.toString());
