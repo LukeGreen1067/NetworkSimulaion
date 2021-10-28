@@ -4,26 +4,28 @@ public class TransportLayerPacket {
     // You may need extra fields
     private int seqnum;
     private int acknum;
-
+    long checksum;
     byte[] data;
 
     // You may need extra methods
 
     public TransportLayerPacket(TransportLayerPacket pkt) {
         // constructor that creates a copy of passed pkt
-
-        this.seqnum = pkt.getSeqnum();
-        this.acknum = pkt.getAcknum();
-        this.data = pkt.getData();
+       
+            this.seqnum = pkt.getSeqnum();
+            this.acknum = pkt.getAcknum();
+            this.data = pkt.getData().clone();
+            this.checksum = pkt.getchecksum();
 
     }
 
-    public TransportLayerPacket(byte[] msg, int seq, int ack) {
+    public TransportLayerPacket(byte[] msg, int seq, int ack, long checksum) {
         // constructor that creates a new pkt
-
-        this.seqnum = seq;
-        this.acknum = ack;
-        this.data = msg;
+       
+            this.seqnum = seq;
+            this.acknum = ack;
+            this.data = msg;
+            this.checksum = checksum;
 
     }
 
@@ -35,7 +37,7 @@ public class TransportLayerPacket {
         this.acknum = acknum;
     }
 
-    public int getSeqnum() {
+     public int getSeqnum() {
         return seqnum;
     }
 
@@ -46,5 +48,7 @@ public class TransportLayerPacket {
     public byte[] getData() {
         return data;
     }
+
+    public long getchecksum(){return checksum;}
 
 }
