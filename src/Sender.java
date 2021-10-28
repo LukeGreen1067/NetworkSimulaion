@@ -48,9 +48,16 @@ int counter=0;
     //since we are simulating one way sending the sender will only get ACK packets
     public void rdt_receive(TransportLayerPacket pkt) {
 
-        acknum = pkt.getAcknum();
-        System.out.format("Sender-> Received ack: "+acknum+"\n");
-        simulator.stopTimer(this);
+               acknum = pkt.getAcknum();
+        if (acknum < 0) {
+            System.out.format("Sender-> Received corrupted ack. resending\n");
+            simulator.stopTimer(this);
+            simulator.startTimer(this, 100.0);
+            simulator.sendToNetworkLayer(this, pkttosend);
+        } else {
+            System.out.format("Sender-> Received ack: " + acknum + "\n");
+            simulator.stopTimer(this);
+        }
     }
 
     public void timerInterrupt() {
