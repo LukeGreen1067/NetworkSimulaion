@@ -1,3 +1,6 @@
+import java.util.zip.CRC32;
+import java.util.zip.Checksum;
+
 class Sender extends TransportLayer {
 
     NetworkSimulator simulator;
@@ -5,13 +8,17 @@ class Sender extends TransportLayer {
     private int acknum;
     private String name;
     TransportLayerPacket pkttosend;
-
+int counter=0;
     public Sender(String n, NetworkSimulator sim) {
         super(n,sim);
         simulator = sim;
         name=n;
     }
-
+    public static long getCRC32Checksum(byte[] bytes) {
+        Checksum crc32 = new CRC32();
+        crc32.update(bytes, 0, bytes.length);
+        return crc32.getValue();
+    }
     public void init() {
 
         seqnum=0;
@@ -21,11 +28,11 @@ class Sender extends TransportLayer {
     //send a packet from layer5 to layer3
     public void rdt_send(byte[] data) {
 
-
-
         if (seqnum==acknum) {//if all have been ack then we can send next packet from application
             seqnum++;
-            pkttosend = new TransportLayerPacket(data, seqnum, acknum);
+            long checksum = getCRC32Checksum(data);
+            pkttosend = new TransportLayerPacket(data, seqnum, acknum, checksum);
+            System.out.format("checksum->"+ pkttosend.getchecksum()+" seq->"+pkttosend.getSeqnum()+"\n");
             simulator.startTimer(this,100.0);
             simulator.sendToNetworkLayer(this, pkttosend);
         } else {
@@ -37,6 +44,7 @@ class Sender extends TransportLayer {
 
     }
 
+
     //since we are simulating one way sending the sender will only get ACK packets
     public void rdt_receive(TransportLayerPacket pkt) {
 
@@ -47,9 +55,12 @@ class Sender extends TransportLayer {
 
     public void timerInterrupt() {
         System.out.format("Sender-> timeOut waiting for ack -> resend pkt with seq="+pkttosend.getSeqnum()+"\n");
-
+        System.out.format("timeout checksum->"+ pkttosend.getchecksum()+" seq->"+pkttosend.getSeqnum()+" new->"+getCRC32Checksum(pkttosend.getData())+"\n");
         simulator.startTimer(this,100.0);
         simulator.sendToNetworkLayer(this, pkttosend);
+      /*  counter++;
+        if (counter>5) System.exit(0);
+*/
     }
 
 }
