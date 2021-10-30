@@ -4,7 +4,8 @@ public class TransportLayerPacket {
     // You may need extra fields
     private int seqnum;
     private int acknum;
-    long checksum;
+   /* long checksum;*/
+    int checksum;
     byte[] data;
 
     // You may need extra methods
@@ -19,7 +20,7 @@ public class TransportLayerPacket {
 
     }
 
-    public TransportLayerPacket(byte[] msg, int seq, int ack, long checksum) {
+    public TransportLayerPacket(byte[] msg, int seq, int ack, int checksum) {
         // constructor that creates a new pkt
        
             this.seqnum = seq;
@@ -49,6 +50,6 @@ public class TransportLayerPacket {
         return data;
     }
 
-    public long getchecksum(){return checksum;}
+    public int getchecksum(){return checksum;}
 
 }
