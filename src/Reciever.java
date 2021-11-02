@@ -1,8 +1,4 @@
 
-
-import java.util.zip.CRC32;
-import java.util.zip.Checksum;
-
 class Receiver extends TransportLayer {
 
 
@@ -17,33 +13,28 @@ class Receiver extends TransportLayer {
         name=n;
     }
 
- /*  public static long Checksum(byte[] bytes) {
-       Checksum crc32 = new CRC32();
-       crc32.update(bytes, 0, bytes.length);
-       return crc32.getValue();
-   }*/
-    public static int Checksum(byte[] bytes) {
+    public static int genchecksum(byte[] bytes) {
 
-       int crc = 0xFFFF;
-       int val = 0;
+        int crc = 0xFFFF;
+        int val = 0;
 
-       int len = bytes.length;
+        int len = bytes.length;
 
-       for(int pos = 0; pos< len; pos++){
-           crc ^=(int)(0x00ff & bytes[pos]);
-           for(int i = 8; i != 0; i--){
-               if((crc & 0x0001) != 0){
-                   crc >>=1;
-                   crc ^= 0xA001;
-               }
-               else
-                   crc >>=1;
-           }
-       }
-       val = (crc & 0xff) << 8;
-       val = val +((crc >> 8) & 0xff);
+        for(int pos = 0; pos< len; pos++){
+            crc ^=(int)(0x00ff & bytes[pos]);
+            for(int i = 8; i != 0; i--){
+                if((crc & 0x0001) != 0){
+                    crc >>=1;
+                    crc ^= 0xA001;
+                }
+                else
+                    crc >>=1;
+            }
+        }
+        val = (crc & 0xff) << 8;
+        val = val +((crc >> 8) & 0xff);
 
-       return val;
+        return val;
     }
 
     public void init() {
@@ -54,35 +45,28 @@ class Receiver extends TransportLayer {
 
     //send a packet from layer5 to layer3 - not used for one way sending - only used in bidirectional
     public void rdt_send(byte[] data) {
-/*
-        seqnum++;
-        TransportLayerPacket newpkt = new TransportLayerPacket(data, seqnum, acknum, checksum);
-        simulator.sendToNetworkLayer(this, newpkt);
-   */
+
     }
 
     //send packet from layer3 to layer5 and also send an ACK back to sender
     public void rdt_receive(TransportLayerPacket pkt) {
 
-
         byte[] data = pkt.getData();
-       /* long checksum = Checksum(data);
-        long checksuminpkt= pkt.getchecksum();*/
-       /*byte [] checksum = Checksum(data);
-        byte[] checksuminpkt = pkt.getchecksum();*/
-        int checksum = Checksum(data);
+        int checksum = genchecksum(data);
         int checksuminpkt = pkt.getchecksum();
-        System.out.format(" checksum in receive ->"+checksum+" checksiumnpck->"+checksuminpkt+" seq->"+pkt.getSeqnum()+"\n");
-        if ((checksum!=checksuminpkt) || (pkt.getSeqnum() < 0)) {
+        //System.out.format(" checksum in receive ->"+checksum+" checksiumnpck->"+checksuminpkt+" seq->"+pkt.getSeqnum()+ " data->" + data.toString()+"\n");
+        if ((checksum!=checksuminpkt) || (pkt.getSeqnum() < 0) ) {
             // error packet is corrupted. do not send  ack
 
-            System.out.format("Receiver->corrupted pkt\n");
+            System.out.format(" Receiver->corrupted pkt\n");
         } else {
+            System.out.format(" Receiver-> sending pkt to application layer" + "\n");
 
             simulator.sendToApplicationLayer(this, data);
-
             int acknum = pkt.getSeqnum();
             pkt.setAcknum(acknum);
+           // System.out.format(" Receiver-> sending feedback pkt to network layer with " +  "ack-> "+ acknum +"\n");
+
             simulator.sendToNetworkLayer(this, pkt);
         }
     }
