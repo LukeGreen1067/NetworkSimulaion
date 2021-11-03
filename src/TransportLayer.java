@@ -19,4 +19,9 @@ public abstract class TransportLayer {
     public String getName() {
         return this.name;
     }
+
+    public NetworkSimulator getSim() {
+        return this.simulator;
+    }
 }
+
