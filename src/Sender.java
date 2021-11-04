@@ -1,5 +1,6 @@
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 class Sender extends TransportLayer {
 
@@ -10,6 +11,12 @@ class Sender extends TransportLayer {
     TransportLayerPacket pkttosend;
     private boolean readyToSend = true;
     private ArrayList<byte[]> queue;
+    private List<TransportLayerPacket> window;
+    private List<TransportLayerPacket> buffer;
+    private int i;
+    private int base;
+    private int nextSeqNum;
+    private int expectedACK;
 
     public Sender(String n, NetworkSimulator sim) {
         super(n,sim);
@@ -54,39 +61,48 @@ class Sender extends TransportLayer {
     }
 
     public void init() {
-
         queue = new ArrayList<>();
-        seqnum=-1;
-        acknum=-1;
+        buffer = new ArrayList<>();
+        window = new ArrayList<>();
 
+        expectedACK = 1;
+        i = 3;
+        base = 1;
+        nextSeqNum = 1;
+        seqnum=0;
+        acknum=1;
     }
 
     //send a packet from layer5 to layer3
     public void rdt_send(byte[] data) {
 
-        if (readyToSend) {
+        if (nextSeqNum < base + i) {
 
             if(queue.size() > 0) {
                 queue.add(data);
                 data = queue.get(0);
                 queue.remove(0);
             }
-
-            readyToSend = false;
             seqnum++;
-            if (seqnum==2) seqnum=0;
+            //if (seqnum==2) seqnum=0;
             int checksum = genchecksum(data);
             pkttosend = new TransportLayerPacket(data, seqnum, acknum, checksum);
-            //  System.out.format("checksum->"+ pkttosend.getchecksum()+" seq->"+pkttosend.getSeqnum()+"\n");
-            //simulator.sendToApplicationLayer(this,pkttosend.getData());
-            System.out.println("Sender --> Sending packet with seq:"+seqnum);
+            System.out.println("Sender --> Sending packet with msg:"+new String(data));
+            window.add(pkttosend);
             simulator.sendToNetworkLayer(this, pkttosend);
-            simulator.startTimer(this,100.0);
-
-
-        } else {
-            System.out.println("Sender --> New data from layer5 added to queue - sender in Stop state.");
+            if(base == nextSeqNum){
+                simulator.startTimer(this,100.0);
+            }
+            nextSeqNum++;
+        }
+        else {
+            seqnum++;
+            System.out.println("Storing in buffer...");
             queue.add(data);
+            int checksum = genchecksum(data);
+            pkttosend = new TransportLayerPacket(data, seqnum, acknum, checksum);
+            nextSeqNum++;
+            buffer.add(pkttosend);
         }
 
 
@@ -95,40 +111,42 @@ class Sender extends TransportLayer {
 
     //since we are simulating one way sending the sender will only get ACK packets
     public void rdt_receive(TransportLayerPacket pkt) {
+        byte[] data = pkt.getData();
+        int checksum = genchecksum(data);
+        int checksuminpkt = pkt.getchecksum();
 
-        acknum = pkt.getAcknum();
-        if (acknum < 0) {
-            System.out.format("Sender-> Received corrupted ack. resending packet with seq:"+seqnum + "\n");
-            simulator.stopTimer(this);
-            simulator.sendToNetworkLayer(this, pkttosend);
-            simulator.startTimer(this, 100.0);
-
-        } else {
-            readyToSend = true;
-            System.out.format("Sender-> Received ack: " + acknum + "\n");
-            simulator.stopTimer(this);
-            byte[] queueNext = takeFromQueue();
-            if (queueNext != null) {
-                readyToSend = false;
-                seqnum++;
-                if (seqnum == 2) seqnum = 0;
-                int checksum = genchecksum(queueNext);
-                pkttosend = new TransportLayerPacket(queueNext, seqnum, acknum, checksum);
-                //  System.out.format("checksum->"+ pkttosend.getchecksum()+" seq->"+pkttosend.getSeqnum()+"\n");
-                //simulator.sendToApplicationLayer(this,pkttosend.getData());
-                System.out.println("Sender --> Sending packet with seq:" + seqnum);
-                simulator.sendToNetworkLayer(this, pkttosend);
+        if ((checksum == checksuminpkt) && (pkt.getAcknum() >= expectedACK)) { // could be wrong with acknum
+            expectedACK = pkt.getAcknum() + 1;
+            System.out.println("Sender received ACK: " + pkt.getAcknum());
+            base = pkt.getAcknum() + 1;
+            if(base == nextSeqNum){
+                simulator.stopTimer(this);
+            }
+            else{
+                window.remove(0);
+                simulator.stopTimer(this);
                 simulator.startTimer(this, 100.0);
             }
+            if(buffer.size() > 0){
+                TransportLayerPacket p = buffer.get(0);
+                window.add(p);
+                buffer.remove(0);
+                simulator.sendToNetworkLayer(this,p);
+                System.out.println("Packet sent from buffer: " + new String(p.getData()));
+            }
+        }
+        else {
+            System.out.println("Wait for timeout packet corruption detected");
         }
     }
 
     public void timerInterrupt() {
-        System.out.format("Sender-> timeOut waiting for ack -> resend pkt with seq="+pkttosend.getSeqnum()+"\n");
-        // System.out.format("timeout checksum->"+ pkttosend.getchecksum()+" seq->"+pkttosend.getSeqnum()+" new->"+getCRC32Checksum(pkttosend.getData())+"\n");
-        //simulator.sendToApplicationLayer(this,pkttosend.getData());
+        System.out.format("Sender-> Timer expired resending packets in window\n");
         simulator.startTimer(this,100.0);
-        simulator.sendToNetworkLayer(this, pkttosend);
+        for (TransportLayerPacket pkt:window) {
+            System.out.format("Sender-> Sending: " + new String(pkt.getData()));
+            simulator.sendToNetworkLayer(this, pkt);
+        }
 
 
     }
