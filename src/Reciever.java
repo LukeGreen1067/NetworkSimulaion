@@ -1,3 +1,5 @@
+import java.util.zip.CRC32;
+import java.util.zip.Checksum;
 
 class Receiver extends TransportLayer {
 
@@ -6,6 +8,8 @@ class Receiver extends TransportLayer {
     private int seqnum;
     private int acknum;
     private String name;
+    private int expectedSeq;
+    private int Last;
 
     public Receiver(String n, NetworkSimulator sim) {
         super(n,sim);
@@ -24,7 +28,7 @@ class Receiver extends TransportLayer {
             crc ^=(int)(0x00ff & bytes[pos]);
             for(int i = 8; i != 0; i--){
                 if((crc & 0x0001) != 0){
-                    crc >>=1;
+                    crc >>=1;   
                     crc ^= 0xA001;
                 }
                 else
@@ -41,6 +45,8 @@ class Receiver extends TransportLayer {
 
         seqnum=0;
         acknum=0;
+        expectedSeq = 1;
+        Last = 0;
     }
 
     //send a packet from layer5 to layer3 - not used for one way sending - only used in bidirectional
@@ -54,24 +60,27 @@ class Receiver extends TransportLayer {
         byte[] data = pkt.getData();
         int checksum = genchecksum(data);
         int checksuminpkt = pkt.getchecksum();
-        //System.out.format(" checksum in receive ->"+checksum+" checksiumnpck->"+checksuminpkt+" seq->"+pkt.getSeqnum()+ " data->" + data.toString()+"\n");
-        if ((checksum!=checksuminpkt) || (pkt.getSeqnum() < 0) ) {
-            // error packet is corrupted. do not send  ack
-
-            System.out.format(" Receiver->corrupted pkt\n");
-        } else {
-            System.out.format(" Receiver-> sending pkt to application layer" + "\n");
-
+        if ((checksum==checksuminpkt) && expectedSeq == pkt.getSeqnum()) {
+            System.out.format(" Receiver-> Packet Received: " + new String(data));
             simulator.sendToApplicationLayer(this, data);
-            int acknum = pkt.getSeqnum();
-            pkt.setAcknum(acknum);
-           // System.out.format(" Receiver-> sending feedback pkt to network layer with " +  "ack-> "+ acknum +"\n");
-
-            simulator.sendToNetworkLayer(this, pkt);
+            byte[] ackdata = "ACK".getBytes();
+            int checksumack = genchecksum(ackdata);
+            System.out.println("Receiver-> ack: "+expectedSeq+" being sent");
+            TransportLayerPacket ackpkt = new TransportLayerPacket(ackdata, expectedSeq, checksumack);
+            simulator.sendToNetworkLayer(this, ackpkt);
+            expectedSeq++;
+            Last++;
+        } else {
+            System.out.format(" Receiver-> corrupted/lost pkt\n" + "Last ack: " + Last);
+            byte[] ackdata = "ACK".getBytes();
+            int checksumack = genchecksum(ackdata);
+            TransportLayerPacket ackpkt = new TransportLayerPacket(ackdata, Last, checksumack);
+            simulator.sendToNetworkLayer(this, ackpkt);
         }
     }
 
     public void timerInterrupt() {
 
     }
+
 }
